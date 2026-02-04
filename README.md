@@ -25,7 +25,7 @@ graph TD
     
     subgraph "Perception Layer"
         Ingest -->|Batch API Call| OpenAI[OpenAI Embeddings API]
-        OpenAI -->|Vectors (1536-dim)| VectorDB[(ChromaDB - Local)]
+        OpenAI -->|Vectors 1536-dim| VectorDB[("ChromaDB - Local")]
     end
     
     subgraph "Reasoning Layer"
