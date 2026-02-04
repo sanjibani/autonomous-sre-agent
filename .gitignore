@@ -38,3 +38,4 @@ evals/chromadb_data/
 
 # Logs
 *.log
+!data/logs/hdfs_sample.log
