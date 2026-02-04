@@ -1,0 +1,42 @@
+[
+    {
+        "title": "HDFS NameNode Connection Failure",
+        "category": "hdfs",
+        "content": "## Symptoms\n- Logs show 'Connection refused' to NameNode\n- DataNodes cannot report block status\n- File operations fail with 'Could not obtain block'\n\n## Root Cause\n1. NameNode service is down\n2. Network connectivity issues between nodes\n3. NameNode is in safe mode\n\n## Resolution\n1. Check NameNode status: `hdfs dfsadmin -report`\n2. If down, restart: `hdfs --daemon start namenode`\n3. Check safe mode: `hdfs dfsadmin -safemode get`\n4. Leave safe mode if needed: `hdfs dfsadmin -safemode leave`"
+    },
+    {
+        "title": "HDFS DataNode Block Replication Issues",
+        "category": "hdfs",
+        "content": "## Symptoms\n- Warnings about under-replicated blocks\n- 'BlockMissingException' in logs\n- Data read failures\n\n## Root Cause\n1. DataNode disk failures\n2. DataNodes offline or unreachable\n3. Insufficient cluster capacity\n\n## Resolution\n1. Check cluster health: `hdfs dfsadmin -report`\n2. Identify problematic DataNodes\n3. Check DataNode logs for disk errors\n4. Force replication: `hdfs dfs -setrep -w 3 /path/to/file`"
+    },
+    {
+        "title": "HDFS Disk Space Warnings",
+        "category": "hdfs",
+        "content": "## Symptoms\n- Logs show 'No space left on device'\n- DataNode health check failures\n- Write operations fail\n\n## Root Cause\n1. DataNode disks are full\n2. Incorrect disk capacity thresholds\n3. Data imbalance across nodes\n\n## Resolution\n1. Check usage: `hdfs dfs -df -h`\n2. Run balancer: `hdfs balancer -threshold 10`\n3. Clean up temporary files\n4. Add more DataNodes if needed"
+    },
+    {
+        "title": "HDFS Network Timeout Errors",
+        "category": "hdfs",
+        "content": "## Symptoms\n- 'SocketTimeoutException' in logs\n- Slow file operations\n- Intermittent connection failures\n\n## Root Cause\n1. Network congestion\n2. Firewall blocking ports\n3. DNS resolution issues\n4. Overloaded NameNode\n\n## Resolution\n1. Check network connectivity between nodes\n2. Verify firewall rules (ports 8020, 9870, 9864)\n3. Increase timeout settings in hdfs-site.xml\n4. Check NameNode heap usage and garbage collection"
+    },
+    {
+        "title": "HDFS Write Pipeline Failures",
+        "category": "hdfs",
+        "content": "## Symptoms\n- 'Pipeline failure' errors\n- 'Unable to create new block' messages\n- File uploads fail partway through\n\n## Root Cause\n1. DataNode failures during write\n2. Network interruptions\n3. Disk write errors\n\n## Resolution\n1. Identify failed DataNode from error message\n2. Check DataNode disk health\n3. Retry the write operation\n4. Consider reducing replication factor temporarily"
+    },
+    {
+        "title": "HDFS Safe Mode Issues",
+        "category": "hdfs",
+        "content": "## Symptoms\n- 'Cannot perform operation - NameNode is in safe mode'\n- Read-only file system behavior\n- Block reports still being processed\n\n## Root Cause\n1. NameNode just started and loading block reports\n2. Too few DataNodes reporting\n3. Block availability below threshold\n\n## Resolution\n1. Wait for safe mode to exit automatically\n2. Check status: `hdfs dfsadmin -safemode get`\n3. Force exit (caution): `hdfs dfsadmin -safemode leave`\n4. Investigate if blocks are actually missing"
+    },
+    {
+        "title": "HDFS NameNode High Memory Usage",
+        "category": "hdfs",
+        "content": "## Symptoms\n- NameNode becomes unresponsive\n- Long garbage collection pauses\n- OutOfMemoryError in logs\n\n## Root Cause\n1. Too many small files\n2. Heap size too small for namespace\n3. Memory leak in NameNode\n\n## Resolution\n1. Increase NameNode heap: HADOOP_NAMENODE_OPTS\n2. Consolidate small files using HAR\n3. Implement file archiving strategy\n4. Review and tune GC settings"
+    },
+    {
+        "title": "HDFS Lease Recovery Issues",
+        "category": "hdfs",
+        "content": "## Symptoms\n- 'Failed to complete file' errors\n- File stuck in 'UNDER_CONSTRUCTION' state\n- Unable to append to files\n\n## Root Cause\n1. Client crashed during write\n2. Lease not released properly\n3. Lease recovery taking too long\n\n## Resolution\n1. Wait for automatic lease recovery (default: 60 seconds)\n2. Force lease recovery: Use recoverLease in DFSClient\n3. Check if original writer is still running\n4. Restart affected applications"
+    }
+]
