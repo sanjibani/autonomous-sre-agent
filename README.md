@@ -31,7 +31,7 @@ graph TD
     subgraph "Reasoning Layer"
         VectorDB -->|Vectors| Clustering[DBSCAN Clustering]
         Clustering -->|Cluster Info| Agent[SRE Agent Logic]
-        VectorDB -.->|Context (Runbooks)| Agent
+        VectorDB -.->|Context Runbooks| Agent
         Agent -->|Prompt| GPT[OpenAI GPT-3.5]
         GPT -->|Recommendation| Dashboard[Streamlit Dashboard]
     end
