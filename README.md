@@ -11,12 +11,10 @@ An intelligent agent that ingests raw logs, clusters them into incidents, invest
 
 ## Tech Stack
 
-- **Embeddings** (Hybrid): 
-    - Default: **OpenAI `text-embedding-3-small`** (Cloud, 1536-dim)
-    - Fallback: `all-MiniLM-L6-v2` (Local, 384-dim)
+- **Embeddings**: **OpenAI `text-embedding-3-small`** (Cloud, 1536-dim)
 - **Vector DB**: ChromaDB (Local persistence)
-- **LLM**: Ollama (Local Llama 3.2, privacy-focused)
-- **Web Framework**: Flask
+- **LLM**: **OpenAI `gpt-3.5-turbo`** (Cloud)
+- **Web Framework**: **Streamlit** (Python-only UI)
 - **Clustering**: DBSCAN (scikit-learn)
 
 ## Architecture
@@ -25,37 +23,26 @@ An intelligent agent that ingests raw logs, clusters them into incidents, invest
 graph TD
     User[User / System Logs] -->|Raw Logs| Ingest[Ingestion Service]
     
-    subgraph "Perception Layer (Cloud)"
+    subgraph "Perception Layer"
         Ingest -->|Batch API Call| OpenAI[OpenAI Embeddings API]
         OpenAI -->|Vectors (1536-dim)| VectorDB[(ChromaDB - Local)]
     end
     
-    subgraph "Reasoning Layer (Local)"
+    subgraph "Reasoning Layer"
         VectorDB -->|Vectors| Clustering[DBSCAN Clustering]
         Clustering -->|Cluster Info| Agent[SRE Agent Logic]
         VectorDB -.->|Context (Runbooks)| Agent
-        Agent -->|Prompt| Ollama[Ollama LLM (Llama 3.2)]
-        Ollama -->|Recommendation| Dashboard[Web Dashboard]
+        Agent -->|Prompt| GPT[OpenAI GPT-3.5]
+        GPT -->|Recommendation| Dashboard[Streamlit Dashboard]
     end
     
-    Dashboard -->|Feedback| VectorDB
+    Dashboard -->|Chat & Feedback| VectorDB
 ```
 
 ## Prerequisites
 
 1. **Python 3.10+**
-2. **Ollama** installed locally:
-   ```bash
-   # macOS
-   brew install ollama
-   
-   # Or download from https://ollama.ai
-   ```
-
-3. **Pull the LLM model**:
-   ```bash
-   ollama pull llama3.2:3b
-   ```
+2. **OpenAI API Key** (Set in `.env`)
 
 ## Installation
 
@@ -72,9 +59,8 @@ pip install -r requirements.txt
 
 ```bash
 # Start the application
-python run.py
-
-# Open browser at http://localhost:5000
+streamlit run streamlit_app.py
+# Opens browser at http://localhost:8501
 ```
 
 ## Project Structure

@@ -357,12 +357,12 @@ If local inference is too slow, these OpenAI-compatible APIs are extremely affor
 
 ## 14. Architecture: Flask vs. Streamlit
 
-| Feature | **Flask** (What we have now) | **Streamlit** (Alternative) |
+| Feature | **Flask** (Deprecated) | **Streamlit** (Adopted) |
 | :--- | :--- | :--- |
 | **Philosophy** | "Web Server Construction Kit" | "Data Script to Web App" |
 | **Target User** | Software Engineers building APIs. | Data Scientists building Dashboards. |
 | **Control** | **100%**. You write the HTML, CSS, Routes. | **10%**. You write Python, it generates the UI. |
 | **State** | Stateless. Need a database to remember things. | Stateful. Keeps variables in memory per session. |
 | **Best For** | Production SaaS, REST APIs, Complex UIs. | **Prototypes**, Internal Tools, Demos. |
-| **Verdict** | Overkill for a single-user demo. | **Perfect fit** for this specific agent. |
+| **Verdict** | Overkill/Complex for this agent. | **Perfect fit** (Reduced code by 80%). |
 
