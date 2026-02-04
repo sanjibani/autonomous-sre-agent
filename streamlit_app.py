@@ -156,10 +156,10 @@ with tab2:
                 # Use RAG to answer
                 response = "I couldn't find a runbook for that."
                 matches = agent.rag_service.vectordb.search_runbooks(prompt, n_results=1)
-                if matches and matches[0]['documents']:
-                    doc = matches[0]['documents'][0]
-                    meta = matches[0]['metadatas'][0]
-                    response = f"**Based on {meta['name']}:**\n\n{doc}"
+                if matches:
+                    doc = matches[0]['document']
+                    meta = matches[0]['metadata']
+                    response = f"**Based on {meta.get('title', 'Runbook')}:**\n\n{doc}"
                 
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})

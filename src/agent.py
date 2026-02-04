@@ -14,7 +14,13 @@ try:
 except ImportError:
     OLLAMA_AVAILABLE = False
 
-from .config import OLLAMA_MODEL, SEVERITY_THRESHOLDS
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+from .config import OLLAMA_MODEL, SEVERITY_THRESHOLDS, LLM_PROVIDER, OPENAI_MODEL, OPENAI_API_KEY
 from .clustering import ClusterInfo
 from .rag import get_rag_service, RAGContext
 
@@ -87,13 +93,15 @@ class SREAgent:
                 context_strings.append(match.get("document", ""))
         
         # Generate recommendation using LLM or fallback
-        if OLLAMA_AVAILABLE:
-            try:
+        try:
+            if LLM_PROVIDER == "openai":
+                result = self._analyze_with_openai(cluster_info, rag_context)
+            elif LLM_PROVIDER == "ollama" and OLLAMA_AVAILABLE:
                 result = self._analyze_with_llm(cluster_info, rag_context)
-            except Exception as e:
-                print(f"LLM analysis failed: {e}. Using fallback.")
+            else:
                 result = self._analyze_with_rules(cluster_info, rag_context)
-        else:
+        except Exception as e:
+            print(f"LLM analysis failed ({LLM_PROVIDER}): {e}. Using fallback.")
             result = self._analyze_with_rules(cluster_info, rag_context)
         
         # Calculate confidence
@@ -120,6 +128,43 @@ class SREAgent:
         keywords = ", ".join(cluster_info.error_keywords[:5]) if cluster_info.error_keywords else "various issues"
         return f"{cluster_info.size} log entries related to: {keywords}"
     
+    def _analyze_with_openai(
+        self,
+        cluster_info: ClusterInfo,
+        rag_context: RAGContext
+    ) -> Dict[str, Any]:
+        """Use OpenAI GPT for analysis"""
+        if not OPENAI_AVAILABLE or not OPENAI_API_KEY:
+            raise ImportError("OpenAI client not available or API key missing")
+            
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        prompt = self._build_analysis_prompt(cluster_info, rag_context)
+        
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are an expert SRE (Site Reliability Engineer) analyzing production incidents.
+Your task is to:
+1. Identify the most likely root cause based on the logs and context provided
+2. Suggest a clear, actionable resolution
+3. Provide a confidence score (0.0 to 1.0) based on how certain you are
+
+Respond in JSON format:
+{
+    "root_cause": "Brief description of the root cause",
+    "recommendation": "Step-by-step resolution",
+    "confidence": 0.X,
+    "evidence": ["Key log line 1", "Key log line 2"]
+}"""
+                },
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+
     def _analyze_with_llm(
         self,
         cluster_info: ClusterInfo,

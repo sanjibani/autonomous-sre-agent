@@ -36,6 +36,12 @@ else:
 DBSCAN_EPS = 0.5  # Maximum distance between samples
 DBSCAN_MIN_SAMPLES = 3  # Minimum samples in a cluster
 
+# LLM Provider settings
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()  # "openai" or "ollama"
+
+# OpenAI settings
+OPENAI_MODEL = "gpt-3.5-turbo"  # Cost-effective and fast
+
 # Ollama settings
 OLLAMA_MODEL = "llama3.2:3b"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
