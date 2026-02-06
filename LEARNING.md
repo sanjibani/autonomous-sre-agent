@@ -416,4 +416,27 @@ We introduced a **Cross-Encoder** as a second stage.
 2.  **Reranking**: The Cross-Encoder (`src/reranker.py`) scores these 9 pairs.
 3.  **Selection**: We pick the **Top 3** highest-scored documents for the Agent.
 
+---
+
+## 17. Anomaly Detection: Finding the Needle in the Haystack
+
+### The Problem: The "Iceberg of Logs"
+*   **Symptoms (The Pile)**: A root cause (e.g., DB crash) triggers 5,000 "Connection Refused" logs.
+*   **Clustering's Blind Spot**: DBSCAN groups the 5,000 symptoms perfectly but often ignores the **single** DB crash log as "noise" because it's unique.
+*   **Result**: SREs see the huge volume of errors but waste time finding the *one* line that started it.
+
+### The Solution: Isolation Forest (`src/anomaly.py`)
+We implemented **Isolation Forest**, an algorithm designed to detect outliers in high-dimensional data (embeddings).
+
+*   **Logic**: It's easier to "isolate" a rare point (few cuts behaving differently) than a normal point (deep inside a cluster).
+*   **Flow**:
+    1.  **Before Clustering**: We pass embeddings to the Anomaly Detector.
+    2.  **Scoring**: It assigns a score (e.g., -0.9 = High Anomaly, 0.5 = Normal).
+    3.  **Integration**: If a cluster contains anomalous logs, we flag it with `has_anomalies=True`.
+
+### Example: The "Bad Deploy"
+*   **10:00:01**: **1 Log** `ImportError: cannot import name 'User'` (Anomaly Score: -0.85).
+*   **10:00:05**: **500 Logs** `500 Internal Server Error` (Cluster #1).
+*   **Agent Analysis**: "I found a massive cluster of 500 errors (symptoms), BUT I also found a highly anomalous `ImportError` (root cause) right before it."
+
 **Model Used**: `cross-encoder/ms-marco-MiniLM-L-6-v2` (Fast, efficient, +20% accuracy boost).
