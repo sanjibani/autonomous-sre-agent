@@ -110,7 +110,9 @@ with col4:
                 size=len(error_logs),
                 representative_logs=error_logs,
                 error_keywords=["disk", "full", "datanode", "error"],
-                severity_hint="high"
+                severity_hint="high",
+                has_anomalies=True,
+                anomaly_count=1
             )
             
             rec = agent.analyze_incident(cluster)
@@ -139,6 +141,9 @@ with tab1:
                 st.markdown("### 📝 Evidence")
                 st.code("\n".join(inc.evidence[:5]), language="text")
                 st.caption(f"Confidence: {inc.confidence * 100:.1f}%")
+                
+                if inc.has_anomalies:
+                    st.warning(f"⚠️ **Anomaly Detected**: Found {inc.anomaly_count} outliers that may be the root cause.")
 
 with tab2:
     # Chat Interface

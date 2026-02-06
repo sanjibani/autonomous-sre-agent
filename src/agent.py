@@ -45,6 +45,8 @@ class Recommendation:
     cluster_summary: str
     timestamp: str
     retrieved_context: List[str]  # For evaluation/faithfulness checks
+    has_anomalies: bool = False  # NEW: Presence of anomalous logs
+    anomaly_count: int = 0       # NEW: Count of anomalies found
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -128,7 +130,9 @@ class SREAgent:
             evidence=result.get("evidence", cluster_info.representative_logs[:3]),
             cluster_summary=cluster_summary,
             timestamp=datetime.now().isoformat(),
-            retrieved_context=context_strings
+            retrieved_context=context_strings,
+            has_anomalies=getattr(cluster_info, 'has_anomalies', False),
+            anomaly_count=getattr(cluster_info, 'anomaly_count', 0)
         )
     
     def _summarize_cluster(self, cluster_info: ClusterInfo) -> str:
@@ -263,6 +267,15 @@ Respond in JSON format:
             "Based on the above information, analyze this incident and provide your recommendation."
         ])
         
+        if getattr(cluster_info, 'has_anomalies', False):
+            parts.extend([
+                "",
+                "⚠️ **ANOMALY DETECTED**",
+                f"This cluster contains {getattr(cluster_info, 'anomaly_count', 0)} highly unusual log entries.",
+                "These outliers generally indicate the Root Cause while the rest are symptoms.",
+                "Pay special attention to logs that look substantively different from the others."
+            ])
+
         return "\n".join(parts)
     
     def _analyze_with_rules(

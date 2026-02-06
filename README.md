@@ -21,7 +21,7 @@ An intelligent agent that ingests raw logs, clusters them into incidents, invest
 - **Streaming**: Kafka (Optional, real-time ingestion)
 - **Caching**: Redis (Optional, 40-60% fewer DB queries)
 
-## Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -66,6 +66,35 @@ graph TD
     
     Dashboard -->|Feedback| Agent
 ```
+
+## Design Decisions
+
+### Why Vector DB over Keyword Search?
+Logs are often unstructured and error messages can vary significantly (e.g., "connection refused" vs. "unable to connect"). Keyword search relies on exact matches, which often misses semantically similar but syntactically different logs. **Vector Database (ChromaDB)** enables **semantic search**, allowing the agent to find relevant past incidents and runbooks based on the *meaning* of the error, not just the keywords.
+
+### Why Cross-Encoder? (vs. Bi-Encoder/Standard Search)
+Standard vector search (Bi-Encoder) is fast but compresses an entire document into a single vector, losing subtle nuances.
+We implemented a **Cross-Encoder** (`ms-marco-MiniLM-L-6-v2`) as a reranking step.
+*   **Bi-Encoder (ChromaDB)** retrieves the top ~10 results quickly.
+*   **Cross-Encoder** examines the query and each document *jointly*, providing a much more accurate relevance score.
+This ensures the LLM receives the most pertinent context, significantly reducing hallucinations.
+
+### Why HDBSCAN over K-Means?
+Log data is noisy and the number of distinct "incident types" is unknown beforehand.
+*   **K-Means** requires specifying `k` (number of clusters) in advance and forces every point into a cluster (sensitive to noise).
+*   **HDBSCAN** is density-based; it automatically determines the number of clusters and identifies "noise" (outliers) that don't fit any pattern. This is ideal for identifying real incident patterns amidst background log noise.
+
+## Trade-offs
+
+### Latency vs. Accuracy (Reranking)
+*   **Decision**: We chose to include a Cross-Encoder reranking step.
+*   **Trade-off**: This adds ~100-200ms latency per query compared to raw vector search.
+*   **Justification**: For an SRE agent, **accuracy is paramount**. Improving the relevance of retrieved runbooks prevents the agent from suggesting incorrect fixes, which is worth the slight delay.
+
+### Cost vs. Performance (Embeddings)
+*   **Decision**: Defaulting to OpenAI `text-embedding-3-small`.
+*   **Trade-off**: Incurs a small cost per token compared to running a local HuggingFace model.
+*   **Justification**: OpenAI's embeddings currently offer a superior balance of performance and dimension size (1536d) for general-purpose tasks. However, the architecture is modular (see `src/embeddings.py`), allowing a swap to local `sentence-transformers` for cost-sensitive or air-gapped environments.
 
 ## Prerequisites
 
