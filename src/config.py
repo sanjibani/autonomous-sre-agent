@@ -62,3 +62,24 @@ SEVERITY_THRESHOLDS = {
     "medium": 0.5,
     "low": 0.0
 }
+
+# =============================================================================
+# Scalability Settings
+# =============================================================================
+
+# Kafka Streaming Settings
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+KAFKA_TOPIC_LOGS = os.getenv("KAFKA_TOPIC_LOGS", "sre-logs")
+KAFKA_CONSUMER_GROUP = os.getenv("KAFKA_CONSUMER_GROUP", "sre-agent")
+KAFKA_BATCH_SIZE = int(os.getenv("KAFKA_BATCH_SIZE", "100"))
+KAFKA_BATCH_WINDOW_MS = int(os.getenv("KAFKA_BATCH_WINDOW_MS", "5000"))
+
+# Redis Cache Settings
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "300"))
+CACHE_ENABLED = os.getenv("CACHE_ENABLED", "true").lower() == "true"
+
+# Time Partitioning Settings
+LOG_PARTITION_STRATEGY = os.getenv("LOG_PARTITION_STRATEGY", "daily")  # "daily" or "weekly"
+LOG_RETENTION_DAYS = int(os.getenv("LOG_RETENTION_DAYS", "30"))
+
