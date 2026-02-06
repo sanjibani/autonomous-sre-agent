@@ -15,6 +15,14 @@ except ImportError:
     OLLAMA_AVAILABLE = False
 
 try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+import tenacity
+
+try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
 except ImportError:
@@ -128,12 +136,17 @@ class SREAgent:
         keywords = ", ".join(cluster_info.error_keywords[:5]) if cluster_info.error_keywords else "various issues"
         return f"{cluster_info.size} log entries related to: {keywords}"
     
+    @tenacity.retry(
+        wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+        stop=tenacity.stop_after_attempt(3),
+        retry=tenacity.retry_if_exception_type((openai.APIConnectionError, openai.RateLimitError, openai.APIError))
+    )
     def _analyze_with_openai(
         self,
         cluster_info: ClusterInfo,
         rag_context: RAGContext
     ) -> Dict[str, Any]:
-        """Use OpenAI GPT for analysis"""
+        """Use OpenAI GPT for analysis (with retry)"""
         if not OPENAI_AVAILABLE or not OPENAI_API_KEY:
             raise ImportError("OpenAI client not available or API key missing")
             

@@ -4,6 +4,7 @@ Uses all-MiniLM-L6-v2 for CPU-efficient embeddings
 """
 from typing import List, Union
 import numpy as np
+import tenacity
 from sentence_transformers import SentenceTransformer
 
 from .config import EMBEDDING_MODEL, EMBEDDING_DIMENSION, USE_OPENAI_EMBEDDINGS, OPENAI_API_KEY
@@ -53,10 +54,23 @@ class EmbeddingService:
             # Batching is handled by user but let's do simple batching here if needed
             # OpenAI limit is usually 2048 dimensions or specific token counts, but for list of strings it's fine
             processed_texts = [t.replace("\n", " ") for t in texts]
-            response = self._client.embeddings.create(input=processed_texts, model=EMBEDDING_MODEL)
-            # OpenAI returns list of objects, we need to preserve order
-            embeddings = [data.embedding for data in response.data]
-            return np.array(embeddings)
+            
+            @tenacity.retry(
+                wait=tenacity.wait_exponential(multiplier=1, min=1, max=10),
+                stop=tenacity.stop_after_attempt(3),
+                retry=tenacity.retry_if_exception_type((Exception)) # OpenAI client not globally imported here, catching generic exception for simplicity or need to import OpenAI error types
+            )
+            def _call_openai():
+                return self._client.embeddings.create(input=processed_texts, model=EMBEDDING_MODEL)
+
+            try:
+                response = _call_openai()
+                # OpenAI returns list of objects, we need to preserve order
+                embeddings = [data.embedding for data in response.data]
+                return np.array(embeddings)
+            except Exception as e:
+                print(f"OpenAI embedding failed after retries: {e}")
+                raise e
             
         else:
             # Local model
