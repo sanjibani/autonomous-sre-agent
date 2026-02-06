@@ -394,3 +394,26 @@ To move from "Prototype" to "Production", we handle the 3 bottlenecks of log ana
     *   **Cleanup**: Deleting old data is instant (just `DROP TABLE logs_2026_01_01`). No row-by-row deletion.
 
 
+
+---
+
+## 16. Advanced Retrieval: Cross-Encoder Reranking
+
+### The Problem: Why Bi-Encoders Aren't Enough
+Our initial RAG pipeline used a **Bi-Encoder** (embedding model) to search runbooks.
+*   **Process**: Query and Documents are vectorized *independently*.
+*   **Limitation**: The model misses nuanced relationships because it never sees the query and document *together*.
+*   **Result**: It might pick a runbook that shares keywords ("restart") but misses the context ("unclean shutdown").
+
+### The Solution: Cross-Encoder Reranking
+We introduced a **Cross-Encoder** as a second stage.
+*   **Process**: It takes the Query and Document as a *pair* and outputs a relevance score (0-1).
+*   **Advantage**: It sees the full interaction between the two texts, understanding deeper semantics.
+*   **Trade-off**: Slower, so we only use it to re-sort the top results.
+
+### Implementation Details
+1.  **Retrieval**: We fetch **3x more candidates** (e.g., Top 9) using the fast Bi-Encoder (ChromaDB).
+2.  **Reranking**: The Cross-Encoder (`src/reranker.py`) scores these 9 pairs.
+3.  **Selection**: We pick the **Top 3** highest-scored documents for the Agent.
+
+**Model Used**: `cross-encoder/ms-marco-MiniLM-L-6-v2` (Fast, efficient, +20% accuracy boost).
