@@ -15,7 +15,9 @@ An intelligent agent that ingests raw logs, clusters them into incidents, invest
 - **Vector DB**: ChromaDB (Time-partitioned, local persistence)
 - **LLM**: **OpenAI `gpt-4o-mini`** (Cloud, Smart & Cheap)
 - **Web Framework**: **Streamlit** (Python-only UI)
-- **Clustering**: DBSCAN (scikit-learn)
+- **Clustering**: **HDBSCAN** (Auto-tuned, density-based)
+- **Anomaly Detection**: **Isolation Forest** (Unsupervised outlier detection)
+- **Reranking**: **Cross-Encoder** (`ms-marco-MiniLM-L-6-v2`)
 - **Streaming**: Kafka (Optional, real-time ingestion)
 - **Caching**: Redis (Optional, 40-60% fewer DB queries)
 
@@ -43,13 +45,24 @@ graph TD
         Embed -->|Write| Yesterday[(logs_2026_02_05)]
     end
     
-    subgraph "Reasoning Layer"
-        Today -->|Query| Clustering[DBSCAN Clustering]
+    subgraph "Analysis Layer"
+        Today -->|Check| Anomaly[Isolation Forest]
+        Today -->|Group| Clustering[HDBSCAN]
+        Anomaly -->|Flags| Clustering
         Clustering -->|Cluster Info| Agent[SRE Agent]
-        Agent -->|RAG| Runbooks[(Runbooks Collection)]
-        Agent -->|Prompt| OpenAI_LLM
-        OpenAI_LLM -->|Recommendation| Dashboard[Streamlit Dashboard]
     end
+    
+    subgraph "Retrieval Layer"
+        Agent -->|Query| Chroma[Vector Search]
+        Chroma -->|Top 9| Rerank[Cross-Encoder]
+        Rerank -->|Top 3| Context[Runbooks Context]
+        Context --> Agent
+    end
+    
+    Agent -->|Prompt| OpenAI_LLM
+    OpenAI_LLM -->|Recommendation| Dashboard[Streamlit Dashboard]
+    
+    Dashboard -->|Feedback| Agent
     
     Dashboard -->|Feedback| Agent
 ```
@@ -86,8 +99,10 @@ streamlit run streamlit_app.py
 │   └── runbooks/          # Runbooks for RAG
 ├── src/
 │   ├── embeddings.py      # OpenAI/Local embedding service
-│   ├── clustering.py      # DBSCAN clustering
+│   ├── clustering.py      # HDBSCAN clustering
+│   ├── anomaly.py         # Isolation Forest anomaly detection
 │   ├── vectordb.py        # ChromaDB with caching + partitioning
+│   ├── reranker.py        # Cross-Encoder reranking
 │   ├── cache.py           # Redis caching layer
 │   ├── kafka_consumer.py  # Kafka streaming consumer
 │   ├── rag.py             # RAG retrieval logic
