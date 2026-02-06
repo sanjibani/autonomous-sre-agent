@@ -142,8 +142,8 @@ with tab1:
                 st.code("\n".join(inc.evidence[:5]), language="text")
                 st.caption(f"Confidence: {inc.confidence * 100:.1f}%")
                 
-                if inc.has_anomalies:
-                    st.warning(f"⚠️ **Anomaly Detected**: Found {inc.anomaly_count} outliers that may be the root cause.")
+                if getattr(inc, 'has_anomalies', False):
+                    st.warning(f"⚠️ **Anomaly Detected**: Found {getattr(inc, 'anomaly_count', 0)} outliers that may be the root cause.")
 
 with tab2:
     # Chat Interface
