@@ -1,14 +1,24 @@
 """
-Clustering module using DBSCAN
+Clustering module using HDBSCAN
 Groups similar log entries into clusters for incident detection
+Includes anomaly detection for flagging unusual patterns
 """
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 import numpy as np
-from sklearn.cluster import DBSCAN
+
+# Try HDBSCAN first, fall back to DBSCAN if not available
+try:
+    import hdbscan
+    HDBSCAN_AVAILABLE = True
+except ImportError:
+    HDBSCAN_AVAILABLE = False
+    from sklearn.cluster import DBSCAN
+
 from collections import Counter
 
 from .config import DBSCAN_EPS, DBSCAN_MIN_SAMPLES
+from .anomaly import get_anomaly_detector
 
 
 @dataclass
@@ -19,37 +29,62 @@ class ClusterInfo:
     representative_logs: List[str]
     error_keywords: List[str]
     severity_hint: str  # Based on keywords
+    has_anomalies: bool = False  # NEW: Flag if cluster contains anomalies
+    anomaly_count: int = 0  # NEW: Number of anomalies in cluster
 
 
 def cluster_embeddings(
     embeddings: np.ndarray,
     eps: float = DBSCAN_EPS,
-    min_samples: int = DBSCAN_MIN_SAMPLES
-) -> np.ndarray:
+    min_samples: int = DBSCAN_MIN_SAMPLES,
+    detect_anomalies: bool = True
+) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Cluster embeddings using DBSCAN
+    Cluster embeddings using HDBSCAN (or DBSCAN fallback)
     
     Args:
         embeddings: numpy array of shape (n_samples, embedding_dim)
-        eps: Maximum distance between two samples to be in same neighborhood
-        min_samples: Minimum number of samples in a neighborhood for a core point
+        eps: Maximum distance (only used for DBSCAN fallback)
+        min_samples: Minimum samples in a cluster
+        detect_anomalies: Whether to run anomaly detection
         
     Returns:
-        Array of cluster labels (-1 for noise)
+        Tuple of (cluster_labels, anomaly_mask)
+        - cluster_labels: Array of cluster labels (-1 for noise)
+        - anomaly_mask: Boolean array (True = anomaly)
     """
-    clustering = DBSCAN(
-        eps=eps,
-        min_samples=min_samples,
-        metric='cosine'  # Better for high-dimensional embeddings
-    )
+    # Run anomaly detection first
+    anomaly_mask = np.zeros(len(embeddings), dtype=bool)
+    if detect_anomalies and len(embeddings) >= 10:
+        detector = get_anomaly_detector()
+        anomaly_mask = detector.get_anomaly_mask(embeddings)
     
-    labels = clustering.fit_predict(embeddings)
-    return labels
+    # Cluster using HDBSCAN or DBSCAN
+    if HDBSCAN_AVAILABLE:
+        clusterer = hdbscan.HDBSCAN(
+            min_cluster_size=max(5, min_samples),
+            min_samples=min_samples,
+            metric='euclidean',
+            cluster_selection_method='eom',  # Excess of Mass
+            prediction_data=True
+        )
+        labels = clusterer.fit_predict(embeddings)
+    else:
+        # Fallback to DBSCAN
+        clusterer = DBSCAN(
+            eps=eps,
+            min_samples=min_samples,
+            metric='cosine'
+        )
+        labels = clusterer.fit_predict(embeddings)
+    
+    return labels, anomaly_mask
 
 
 def summarize_clusters(
     logs: List[str],
     labels: np.ndarray,
+    anomaly_mask: np.ndarray = None,
     max_representatives: int = 5
 ) -> List[ClusterInfo]:
     """
@@ -57,12 +92,15 @@ def summarize_clusters(
     
     Args:
         logs: Original log lines
-        labels: Cluster labels from DBSCAN
+        labels: Cluster labels from HDBSCAN/DBSCAN
+        anomaly_mask: Boolean array indicating anomalies
         max_representatives: Max number of representative logs per cluster
         
     Returns:
         List of ClusterInfo objects
     """
+    if anomaly_mask is None:
+        anomaly_mask = np.zeros(len(logs), dtype=bool)
     clusters = []
     unique_labels = set(labels)
     
@@ -102,16 +140,22 @@ def summarize_clusters(
         else:
             severity = "low"
         
+        # Count anomalies in this cluster
+        cluster_anomalies = [i for i in range(len(logs)) if mask[i] and anomaly_mask[i]]
+        anomaly_count = len(cluster_anomalies)
+        
         clusters.append(ClusterInfo(
             cluster_id=int(label),
             size=len(cluster_logs),
             representative_logs=representatives,
             error_keywords=keywords,
-            severity_hint=severity
+            severity_hint=severity,
+            has_anomalies=anomaly_count > 0,
+            anomaly_count=anomaly_count
         ))
     
-    # Sort by size (largest clusters first)
-    clusters.sort(key=lambda x: x.size, reverse=True)
+    # Sort by size (largest clusters first), then by anomaly presence
+    clusters.sort(key=lambda x: (x.has_anomalies, x.size), reverse=True)
     
     return clusters
 
