@@ -13,7 +13,7 @@ An intelligent agent that ingests raw logs, clusters them into incidents, invest
 
 - **Embeddings**: **OpenAI `text-embedding-3-small`** (Cloud, 1536-dim)
 - **Vector DB**: ChromaDB (Time-partitioned, local persistence)
-- **LLM**: **OpenAI `gpt-3.5-turbo`** (Cloud)
+- **LLM**: **OpenAI `gpt-4o-mini`** (Cloud, Smart & Cheap)
 - **Web Framework**: **Streamlit** (Python-only UI)
 - **Clustering**: DBSCAN (scikit-learn)
 - **Streaming**: Kafka (Optional, real-time ingestion)
@@ -43,7 +43,7 @@ graph TD
         Today -->|Query| Clustering[DBSCAN Clustering]
         Clustering -->|Cluster Info| Agent[SRE Agent]
         Agent -->|RAG| Runbooks[(Runbooks Collection)]
-        Agent -->|Prompt| GPT[OpenAI GPT-3.5]
+        Agent -->|Prompt| GPT[OpenAI GPT-4o-mini]
         GPT -->|Recommendation| Dashboard[Streamlit Dashboard]
     end
     
