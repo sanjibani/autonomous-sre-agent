@@ -27,24 +27,28 @@ graph TD
     Kafka -->|Consume| Consumer[Kafka Consumer]
     Consumer -->|Batch| Embed[Embedding Service]
     
+    subgraph "Resilience Layer"
+        Embed -->|Retry + Backoff| OpenAI_Embed[OpenAI Embeddings]
+        Agent -->|Retry + Backoff| OpenAI_LLM[OpenAI GPT-4o-mini]
+    end
+
     subgraph "Caching Layer"
         Embed -->|Check| Redis[(Redis Cache)]
-        Redis -->|Miss| OpenAI[OpenAI Embeddings]
-        OpenAI -->|Store| Redis
+        Redis -->|Miss| OpenAI_Embed
+        OpenAI_Embed -->|Store| Redis
     end
     
     subgraph "Storage Layer - Time Partitioned"
         Embed -->|Write| Today[(logs_2026_02_06)]
         Embed -->|Write| Yesterday[(logs_2026_02_05)]
-        Embed -->|Write| Older[(logs_2026_02_...)]
     end
     
     subgraph "Reasoning Layer"
         Today -->|Query| Clustering[DBSCAN Clustering]
         Clustering -->|Cluster Info| Agent[SRE Agent]
         Agent -->|RAG| Runbooks[(Runbooks Collection)]
-        Agent -->|Prompt| GPT[OpenAI GPT-4o-mini]
-        GPT -->|Recommendation| Dashboard[Streamlit Dashboard]
+        Agent -->|Prompt| OpenAI_LLM
+        OpenAI_LLM -->|Recommendation| Dashboard[Streamlit Dashboard]
     end
     
     Dashboard -->|Feedback| Agent
